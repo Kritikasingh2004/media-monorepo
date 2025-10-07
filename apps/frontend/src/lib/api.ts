@@ -39,10 +39,21 @@ export async function uploadMedia({
       },
     });
     return response.data;
-  } catch (err: any) {
-    // error message
-    const message =
-      err?.response?.data?.message || err?.message || "Upload failed";
+  } catch (err: unknown) {
+    let message = "Upload failed";
+    if (axios.isAxiosError(err)) {
+      // attempt to extract a message field if server returned JSON
+      const data = err.response?.data as unknown;
+      if (data && typeof data === "object" && "message" in data) {
+        const possible = (data as { message?: unknown }).message;
+        if (typeof possible === "string" && possible.trim()) {
+          message = possible;
+        }
+      }
+      message = message || err.message || "Upload failed";
+    } else if (err instanceof Error) {
+      message = err.message || message;
+    }
     throw new Error(message);
   }
 }
