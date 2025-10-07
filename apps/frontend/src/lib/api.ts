@@ -1,4 +1,5 @@
 import { MediaItem } from "@media/contracts";
+import axios from "axios";
 
 const BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001";
@@ -25,32 +26,23 @@ export async function uploadMedia({
   const form = new FormData();
   form.append("title", title);
   if (description) form.append("description", description);
-  form.append("file", file);
+  form.append("file", file); // field name must match FileInterceptor('file') on backend
 
-  // Using XHR for progress (fetch has no native progress for upload)
-  const xhr = new XMLHttpRequest();
-  const promise: Promise<MediaItem> = new Promise((resolve, reject) => {
-    xhr.open("POST", `${BASE_URL}/media`);
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          resolve(JSON.parse(xhr.responseText) as MediaItem);
-        } catch (_err) {
-          reject(new Error("Invalid JSON response"));
+  try {
+    const response = await axios.post<MediaItem>(`${BASE_URL}/media`, form, {
+      headers: { "Content-Type": "multipart/form-data" },
+      onUploadProgress: (evt) => {
+        if (evt.total) {
+          const pct = Math.round((evt.loaded / evt.total) * 100);
+          onProgress?.(pct);
         }
-      } else {
-        reject(new Error(`Upload failed (${xhr.status})`));
-      }
-    };
-    xhr.onerror = () => reject(new Error("Network error during upload"));
-    if (xhr.upload && onProgress) {
-      xhr.upload.onprogress = (evt) => {
-        if (evt.lengthComputable) {
-          onProgress(Math.round((evt.loaded / evt.total) * 100));
-        }
-      };
-    }
-    xhr.send(form);
-  });
-  return promise;
+      },
+    });
+    return response.data;
+  } catch (err: any) {
+    // error message
+    const message =
+      err?.response?.data?.message || err?.message || "Upload failed";
+    throw new Error(message);
+  }
 }
