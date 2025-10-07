@@ -1,15 +1,15 @@
-'use client';
-import { useState } from 'react';
-import { uploadMedia } from '../lib/api';
-import { MediaItem } from '../types/media';
+"use client";
+import { useState } from "react";
+import { uploadMedia } from "../lib/api";
+import { MediaItem } from "@media/contracts";
 
 interface Props {
   onUploaded: (item: MediaItem) => void;
 }
 
 export function UploadForm({ onUploaded }: Props) {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -18,7 +18,7 @@ export function UploadForm({ onUploaded }: Props) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!file) {
-      setError('Choose a file');
+      setError("Choose a file");
       return;
     }
     setError(null);
@@ -31,19 +31,23 @@ export function UploadForm({ onUploaded }: Props) {
         onProgress: (p) => setProgress(p),
       });
       onUploaded(item);
-      setTitle('');
-      setDescription('');
+      setTitle("");
+      setDescription("");
       setFile(null);
       setProgress(null);
-    } catch (e: any) {
-      setError(e.message || 'Upload failed');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Upload failed";
+      setError(msg || "Upload failed");
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3 w-full max-w-md border p-4 rounded bg-white/5">
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-3 w-full max-w-md border p-4 rounded bg-white/5"
+    >
       <div>
         <label className="block text-sm font-medium mb-1">Title</label>
         <input
@@ -80,7 +84,7 @@ export function UploadForm({ onUploaded }: Props) {
         disabled={submitting}
         className="px-4 py-2 rounded bg-blue-600 text-white disabled:opacity-50"
       >
-        {submitting ? 'Uploading...' : 'Upload'}
+        {submitting ? "Uploading..." : "Upload"}
       </button>
     </form>
   );

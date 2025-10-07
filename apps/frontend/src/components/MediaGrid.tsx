@@ -1,5 +1,5 @@
-'use client';
-import { MediaItem } from '../types/media';
+"use client";
+import { MediaItem } from "@media/contracts";
 
 interface Props {
   items: MediaItem[];
@@ -17,8 +17,12 @@ export function MediaGrid({ items, loading, error }: Props) {
       {items.map((m) => (
         <div key={m.id} className="border rounded p-2 space-y-2 bg-white/5">
           <div className="aspect-video w-full overflow-hidden rounded bg-black/20 flex items-center justify-center">
-            {m.type === 'video' ? (
-              <video src={m.url} controls className="w-full h-full object-cover" />
+            {m.type === "video" ? (
+              <video
+                src={m.url}
+                controls
+                className="w-full h-full object-cover"
+              />
             ) : (
               <img
                 src={m.thumbnailUrl || m.url}
@@ -28,12 +32,14 @@ export function MediaGrid({ items, loading, error }: Props) {
             )}
           </div>
           <div className="space-y-1">
-            <p className="text-sm font-medium truncate" title={m.title}>{m.title}</p>
+            <p className="text-sm font-medium truncate" title={m.title}>
+              {m.title}
+            </p>
             {m.description && (
               <p className="text-xs line-clamp-2 opacity-80">{m.description}</p>
             )}
             <p className="text-[10px] uppercase tracking-wide opacity-60">
-              {m.type} {m.size ? `• ${(m.size / 1024).toFixed(1)} KB` : ''}
+              {m.type} {m.size ? `• ${(m.size / 1024).toFixed(1)} KB` : ""}
             </p>
           </div>
         </div>

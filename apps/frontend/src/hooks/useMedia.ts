@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
-import { MediaItem } from '../types/media';
-import { listMedia } from '../lib/api';
+import { useCallback, useEffect, useState } from "react";
+import { MediaItem } from "@media/contracts";
+import { listMedia } from "../lib/api";
 
 export function useMedia() {
   const [items, setItems] = useState<MediaItem[]>([]);
@@ -13,8 +13,9 @@ export function useMedia() {
     try {
       const data = await listMedia();
       setItems(data);
-    } catch (e: any) {
-      setError(e.message || 'Failed to load media');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Failed to load media";
+      setError(msg || "Failed to load media");
     } finally {
       setLoading(false);
     }

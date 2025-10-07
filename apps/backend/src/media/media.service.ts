@@ -6,6 +6,7 @@ import {
 import { SupabaseService } from '../sdk/supabase.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMediaDto } from './dto/create-media.dto';
+import { MediaItem } from '@media/contracts';
 
 @Injectable()
 export class MediaService {
@@ -14,7 +15,10 @@ export class MediaService {
     private readonly supabase: SupabaseService,
   ) {}
 
-  async upload(file: Express.Multer.File, dto: CreateMediaDto) {
+  async upload(
+    file: Express.Multer.File,
+    dto: CreateMediaDto,
+  ): Promise<MediaItem> {
     if (!file) throw new BadRequestException('File is required');
 
     const publicUrl = await this.supabase.uploadFile(file);
@@ -29,19 +33,43 @@ export class MediaService {
         size: file?.size,
       },
     });
-
-    return created;
+    return this.toContract(created);
   }
 
-  async list() {
-    return this.prisma.file.findMany({
+  async list(): Promise<MediaItem[]> {
+    const rows = await this.prisma.file.findMany({
       orderBy: { uploadedAt: 'desc' },
     });
+    return rows.map((r): MediaItem => this.toContract(r));
   }
 
-  async findOne(id: string) {
+  async findOne(id: string): Promise<MediaItem> {
     const media = await this.prisma.file.findUnique({ where: { id } });
     if (!media) throw new NotFoundException('Media not found');
-    return media;
+    return this.toContract(media);
+  }
+
+  private toContract(row: {
+    id: string;
+    title: string;
+    description: string | null;
+    url: string;
+    type: string;
+    mimeType: string | null;
+    size: number | null;
+    uploadedAt: Date;
+    thumbnailUrl: string | null;
+  }): MediaItem {
+    return {
+      id: row.id,
+      title: row.title,
+      description: row.description ?? undefined,
+      url: row.url,
+      type: row.type,
+      mimeType: row.mimeType ?? undefined,
+      size: row.size ?? undefined,
+      uploadedAt: row.uploadedAt.toISOString(),
+      thumbnailUrl: row.thumbnailUrl ?? undefined,
+    };
   }
 }

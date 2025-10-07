@@ -1,4 +1,4 @@
-import { MediaLibraryClient } from '../components/MediaLibraryClient';
+import { MediaLibraryClient } from "../components/MediaLibraryClient";
 
 // Server Component (no client hooks directly here)
 export default async function Home() {

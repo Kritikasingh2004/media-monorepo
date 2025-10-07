@@ -1,7 +1,7 @@
-'use client';
-import { UploadForm } from './UploadForm';
-import { MediaGrid } from './MediaGrid';
-import { useMedia } from '../hooks/useMedia';
+"use client";
+import { UploadForm } from "./UploadForm";
+import { MediaGrid } from "./MediaGrid";
+import { useMedia } from "../hooks/useMedia";
 
 export function MediaLibraryClient() {
   const { items, loading, error, setItems } = useMedia();
