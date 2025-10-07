@@ -22,5 +22,6 @@ model File {
   type        String              // "image" | "video"
   mimeType    String?             // e.g. "image/png"
   size        Int?                // file size in bytes
+  thumbnailUrl String?
   uploadedAt  DateTime @default(now())
 }
