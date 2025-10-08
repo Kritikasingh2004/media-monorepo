@@ -11,9 +11,8 @@ export default async function Home() {
               Media Library
             </h1>
             <p className="text-sm md:text-base font-base opacity-90 max-w-prose">
-              Upload, preview and manage image & video assets with a bold
-              neo-brutalist interface. Built with Next.js, Tailwind and
-              Prisma-backed API.
+              Upload, preview, and manage images & videos with instant previews
+              and fast, reliable uploads.
             </p>
             <div className="flex gap-4 pt-2 text-[10px] uppercase tracking-wide">
               <span className="px-3 py-1 rounded-base border-2 border-border bg-secondary-background shadow-shadow">

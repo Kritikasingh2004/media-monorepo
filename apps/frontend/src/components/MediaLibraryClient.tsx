@@ -10,7 +10,9 @@ import { RefreshCw } from "lucide-react";
 
 export function MediaLibraryClient() {
   const { user, logout, loading: authLoading } = useAuth();
-  const { items, loading, error, setItems, refresh, reset } = useMedia(!!user && !authLoading);
+  const { items, loading, error, setItems, refresh, reset } = useMedia(
+    !!user && !authLoading
+  );
 
   if (authLoading) {
     return <p className="text-sm opacity-70">Loading session...</p>;
@@ -108,7 +110,6 @@ export function MediaLibraryClient() {
           <p className="font-heading text-base">Tips</p>
           <ul className="list-disc pl-5 space-y-1">
             <li>Refresh to re-fetch server state if you suspect drift.</li>
-            <li>Videos display native controls; images show thumbnails.</li>
           </ul>
         </CardContent>
       </Card>
