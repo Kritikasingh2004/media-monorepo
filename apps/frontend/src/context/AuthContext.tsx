@@ -1,6 +1,19 @@
 "use client";
-import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { login as apiLogin, register as apiRegister, me, logout as apiLogout, loadStoredToken, setAuthToken } from "../lib/api";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react";
+import {
+  login as apiLogin,
+  register as apiRegister,
+  me,
+  logout as apiLogout,
+  loadStoredToken,
+  setAuthToken,
+} from "../lib/api";
 import { toast } from "sonner";
 
 interface AuthState {
@@ -21,7 +34,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const token = loadStoredToken();
-    if (!token) { setLoading(false); return; }
+    if (!token) {
+      setLoading(false);
+      return;
+    }
     me()
       .then((u) => {
         setUser({ id: u.id, email: u.email });

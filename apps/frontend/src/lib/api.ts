@@ -80,7 +80,9 @@ export async function uploadMedia({
 }
 
 // ---------- Auth Endpoints ----------
-interface AuthResponse { accessToken: string }
+interface AuthResponse {
+  accessToken: string;
+}
 
 function mapServerError(raw: unknown, fallback: string): string {
   // NestJS default error shape: { statusCode, message, error }
@@ -106,10 +108,17 @@ function mapServerError(raw: unknown, fallback: string): string {
 }
 
 async function parseJsonSafe(res: Response) {
-  try { return await res.json(); } catch { return null; }
+  try {
+    return await res.json();
+  } catch {
+    return null;
+  }
 }
 
-export async function register(email: string, password: string): Promise<AuthResponse> {
+export async function register(
+  email: string,
+  password: string
+): Promise<AuthResponse> {
   const res = await fetch(`${BASE_URL}/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -117,14 +126,19 @@ export async function register(email: string, password: string): Promise<AuthRes
   });
   if (!res.ok) {
     const body = await parseJsonSafe(res);
-    throw new Error(mapServerError(body ?? (await res.text()), "Registration failed"));
+    throw new Error(
+      mapServerError(body ?? (await res.text()), "Registration failed")
+    );
   }
   const data = (await res.json()) as AuthResponse;
   setAuthToken(data.accessToken);
   return data;
 }
 
-export async function login(email: string, password: string): Promise<AuthResponse> {
+export async function login(
+  email: string,
+  password: string
+): Promise<AuthResponse> {
   const res = await fetch(`${BASE_URL}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -139,7 +153,11 @@ export async function login(email: string, password: string): Promise<AuthRespon
   return data;
 }
 
-export interface MeResponse { id: string; email: string; createdAt: string }
+export interface MeResponse {
+  id: string;
+  email: string;
+  createdAt: string;
+}
 
 export async function me(): Promise<MeResponse> {
   if (!authToken) throw new Error("Not authenticated");

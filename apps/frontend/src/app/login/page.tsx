@@ -3,8 +3,22 @@ import { useAuth } from "../../context/AuthContext";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+} from "@/components/ui/card";
+import {
+  Form,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+} from "@/components/ui/form";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -52,7 +66,11 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" noValidate>
+            <form
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="space-y-6"
+              noValidate
+            >
               <FormField
                 control={form.control}
                 name="email"
@@ -60,7 +78,13 @@ export default function LoginPage() {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input id="email" type="email" placeholder="you@example.com" autoComplete="email" {...field} />
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="you@example.com"
+                        autoComplete="email"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -73,7 +97,13 @@ export default function LoginPage() {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input id="password" type="password" placeholder="••••••" autoComplete="current-password" {...field} />
+                      <Input
+                        id="password"
+                        type="password"
+                        placeholder="••••••"
+                        autoComplete="current-password"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -92,7 +122,10 @@ export default function LoginPage() {
           </Form>
         </CardContent>
         <CardFooter className="text-xs opacity-70">
-          Need an account? <a className="underline ml-1" href="/register">Register</a>
+          Need an account?{" "}
+          <a className="underline ml-1" href="/register">
+            Register
+          </a>
         </CardFooter>
       </Card>
     </main>
