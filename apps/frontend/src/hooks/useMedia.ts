@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { MediaItem } from "@media/contracts";
 import { listMedia } from "../lib/api";
 
-export function useMedia() {
+export function useMedia(enabled: boolean = true) {
   const [items, setItems] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,8 +22,16 @@ export function useMedia() {
   }, []);
 
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    if (enabled) {
+      refresh();
+    }
+  }, [enabled, refresh]);
 
-  return { items, loading, error, refresh, setItems };
+  const reset = () => {
+    setItems([]);
+    setError(null);
+    setLoading(false);
+  };
+
+  return { items, loading, error, refresh, setItems, reset };
 }

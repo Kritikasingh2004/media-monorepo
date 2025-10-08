@@ -9,8 +9,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { RefreshCw } from "lucide-react";
 
 export function MediaLibraryClient() {
-  const { items, loading, error, setItems, refresh } = useMedia();
   const { user, logout, loading: authLoading } = useAuth();
+  const { items, loading, error, setItems, refresh, reset } = useMedia(!!user && !authLoading);
 
   if (authLoading) {
     return <p className="text-sm opacity-70">Loading session...</p>;
@@ -85,7 +85,10 @@ export function MediaLibraryClient() {
               <Button
                 type="button"
                 variant="neutral"
-                onClick={logout}
+                onClick={() => {
+                  logout();
+                  reset();
+                }}
                 className="min-w-24"
               >
                 Logout
