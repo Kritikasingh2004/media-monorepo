@@ -33,13 +33,22 @@ interface Props {
   onUploaded: (item: MediaItem) => void;
 }
 
+const MAX_BYTES = 50 * 1024 * 1024;
 const schema = z.object({
   title: z.string().max(200, "Title too long").optional(),
   description: z.string().max(2000, "Description too long").optional(),
   file: z
     .instanceof(File)
     .or(z.null())
-    .refine((f) => f instanceof File, "Choose a file"),
+    .refine((f) => f instanceof File, "Choose a file")
+    .refine(
+      (f) => !f || /^image\//.test(f.type) || /^video\//.test(f.type),
+      "Only image or video files are allowed"
+    )
+    .refine(
+      (f) => !f || f.size <= MAX_BYTES,
+      `File must be <= ${(MAX_BYTES / (1024 * 1024)).toFixed(0)}MB`
+    ),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -158,9 +167,30 @@ export function UploadForm({ onUploaded }: Props) {
                       <input
                         ref={fileInputRef}
                         type="file"
+                        accept="image/*,video/*"
                         className="hidden"
                         onChange={(e) => {
                           const f = e.target.files?.[0] || null;
+                          if (f) {
+                            const typeOk =
+                              /^image\//.test(f.type) ||
+                              /^video\//.test(f.type);
+                            const sizeOk = f.size <= MAX_BYTES;
+                            if (!typeOk || !sizeOk) {
+                              toast.error(
+                                !typeOk
+                                  ? "Only image or video files are allowed"
+                                  : `File exceeds ${(
+                                      MAX_BYTES /
+                                      (1024 * 1024)
+                                    ).toFixed(0)}MB limit`
+                              );
+                              if (fileInputRef.current)
+                                fileInputRef.current.value = "";
+                              field.onChange(null);
+                              return;
+                            }
+                          }
                           field.onChange(f);
                         }}
                       />
@@ -247,7 +277,7 @@ export function UploadForm({ onUploaded }: Props) {
         </Form>
       </CardContent>
       <CardFooter className="text-[10px] uppercase tracking-wide opacity-70 flex flex-wrap gap-4">
-        <span>Max size depends on server config.</span>
+        <span>Only images/videos. Max 50MB.</span>
       </CardFooter>
     </Card>
   );

@@ -21,6 +21,15 @@ export class MediaService {
   ): Promise<MediaItem> {
     if (!file) throw new BadRequestException('File is required');
 
+    // Defensive validation (controller already filters, but double-check here)
+    const MAX = 50 * 1024 * 1024; // 50MB
+    if (file.size > MAX) {
+      throw new BadRequestException('File exceeds 50MB limit');
+    }
+    if (!/^image\//.test(file.mimetype) && !/^video\//.test(file.mimetype)) {
+      throw new BadRequestException('Only image or video files are allowed');
+    }
+
     const publicUrl = await this.supabase.uploadFile(file);
 
     const created = await this.prisma.file.create({
