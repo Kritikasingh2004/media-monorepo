@@ -58,6 +58,16 @@ export class MediaService {
     return this.toContract(media);
   }
 
+  /**
+   * Internal helper used by streaming endpoint to obtain the raw DB row
+   * (including original url/mime/size) without transforming to contract.
+   */
+  async getFileRow(id: string) {
+    const media = await this.prisma.file.findUnique({ where: { id } });
+    if (!media) throw new NotFoundException('Media not found');
+    return media;
+  }
+
   private toContract(row: {
     id: string;
     title: string;

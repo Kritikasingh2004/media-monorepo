@@ -96,3 +96,50 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+
+---
+
+## Project APIs (Custom)
+
+### Media Endpoints
+
+Base path: `/media`
+
+| Method | Path                | Description                                                                                  |
+| ------ | ------------------- | -------------------------------------------------------------------------------------------- |
+| POST   | `/media`            | Upload image or video (multipart: fields `title`, `description?`, `file`). Max 50MB.         |
+| GET    | `/media`            | List all media (newest first).                                                               |
+| GET    | `/media/:id`        | Fetch metadata for a single media item.                                                      |
+| GET    | `/media/:id/stream` | Stream the raw media bytes with HTTP Range support (use for `<video>` progressive playback). |
+
+### Streaming Usage
+
+For videos, prefer using the streaming endpoint so the browser can request partial ranges:
+
+```html
+<video src="http://localhost:3001/media/<id>/stream" controls></video>
+```
+
+If a `Range` header is supplied by the browser, it is forwarded to object storage (Supabase) and partial content (206) is returned when supported.
+
+### Response Shape (List / Detail / Upload)
+
+```json
+{
+  "id": "uuid",
+  "title": "string",
+  "description": "string?",
+  "url": "https://public.cdn/...",
+  "type": "image" | "video",
+  "mimeType": "image/png",
+  "size": 123456,
+  "uploadedAt": "2025-10-08T09:15:00.000Z",
+  "thumbnailUrl": "https://.../thumb.png" // nullable
+}
+```
+
+### Notes
+
+- Public `url` field remains for direct loading (images, fallback). For controlled video playback or large file efficiency, use `/media/:id/stream`.
+- Currently thumbnails are not generated; `thumbnailUrl` is reserved for future processing pipeline.
+- Validation limits mime types to `image/*` or `video/*` and a maximum size of 50MB.

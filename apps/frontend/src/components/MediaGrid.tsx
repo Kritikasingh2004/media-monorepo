@@ -1,5 +1,6 @@
 "use client";
 import { MediaItem } from "@media/contracts";
+import { BASE_URL } from "@/lib/api";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -71,10 +72,17 @@ export function MediaGrid({ items, loading, error }: Props) {
                             <div className="aspect-video w-full bg-black/10 flex items-center justify-center overflow-hidden border-b-2 border-border">
                               {m.type === "video" ? (
                                 <video
-                                  src={m.url}
+                                  src={`${BASE_URL}/media/${m.id}/stream`}
                                   className="w-full h-full object-cover"
                                   preload="metadata"
                                   muted
+                                  onError={(e) => {
+                                    const el = e.currentTarget;
+                                    if (!el.dataset._fallbackUsed) {
+                                      el.dataset._fallbackUsed = "1";
+                                      el.src = m.url; // fallback to direct public URL
+                                    }
+                                  }}
                                 />
                               ) : (
                                 <img
@@ -120,10 +128,17 @@ export function MediaGrid({ items, loading, error }: Props) {
                           <div className="rounded-base border-2 border-border overflow-hidden bg-secondary-background aspect-video flex items-center justify-center">
                             {m.type === "video" ? (
                               <video
-                                src={m.url}
+                                src={`${BASE_URL}/media/${m.id}/stream`}
                                 controls
                                 autoPlay
                                 className="w-full h-full object-contain"
+                                onError={(e) => {
+                                  const el = e.currentTarget;
+                                  if (!el.dataset._fallbackUsed) {
+                                    el.dataset._fallbackUsed = "1";
+                                    el.src = m.url;
+                                  }
+                                }}
                               />
                             ) : (
                               <img
