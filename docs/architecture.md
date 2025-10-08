@@ -1,94 +1,72 @@
-# Media Monorepo Architecture
+## Architecture (Current Flow)
 
-This document provides an overview of the system architecture, the technology stack chosen, and potential improvements for scaling the system.
+This document describes the real runtime flow: browser → Next.js frontend → NestJS API → (a) local PostgreSQL for metadata and users, (b) Supabase Storage for binary media (images/videos). The backend stores and returns public (currently unsigned) URLs produced by Supabase.
 
-## 1. Architecture Diagram
+### 1. High‑Level Diagram
 
-The system is designed as a monorepo containing a frontend web application and a backend API. It leverages cloud services for database and file storage.
+<p align="center">
+  <img src="./architecture.png" alt="Architecture Diagram" width="640" />
+</p>
 
-```mermaid
-graph TD
-    subgraph "User"
-        A[Browser]
-    end
+### 2. End‑to‑End Request / Data Paths
 
-    subgraph "Frontend (Vercel/Node.js)"
-        B[Next.js App]
-    end
+| Concern       | Flow                                                                                  | Result                                 |
+| ------------- | ------------------------------------------------------------------------------------- | -------------------------------------- |
+| Auth Register | Browser → Next.js → `POST /auth/register` → NestJS → Postgres                         | User created (hashed pwd) → JWT issued |
+| Auth Login    | Browser → Next.js → `POST /auth/login` → NestJS → Postgres                            | Credentials verified → JWT (1h)        |
+| Auth Me       | Browser → Next.js → `GET /auth/me` (JWT) → NestJS → Postgres                          | Current user profile JSON              |
+| Upload Media  | Browser (multipart) → Next.js → `POST /media` (JWT) → NestJS → Supabase + Postgres    | File stored (Supabase) + metadata row  |
+| List Media    | Browser → Next.js → `GET /media` (JWT) → NestJS → Postgres                            | Ordered media list (desc uploadedAt)   |
+| Detail Media  | Browser → Next.js → `GET /media/:id` (JWT) → NestJS → Postgres                        | Single media metadata                  |
+| Stream Media  | Browser (video element) → Next.js → `GET /media/:id/stream` (JWT) → NestJS → Supabase | Proxied/partial content streaming      |
 
-    subgraph "Backend (Node.js)"
-        C[NestJS API]
-    end
+### 3. Components & Responsibilities
 
-    subgraph "Database"
-        D[PostgreSQL]
-    end
+1. Browser (User Agent)
+   - Displays UI, sends form/multipart uploads, sets Authorization: Bearer <token>.
+2. Next.js Frontend
+   - UI layer & auth context; no server-side media processing yet.
+   - Could later generate pre-signed upload URLs to bypass API for large files.
+3. NestJS API
+   - Auth module: register/login/me, JWT issuance & guard enforcement.
+   - Media module: validation, size/type enforcement, streaming proxy.
+   - Integrations: Prisma (database), Supabase Storage (binary persistence).
+4. PostgreSQL (Local Dev Instance)
+   - Persists users and media metadata (title, mimeType, size, url, timestamps, reserved thumbnailUrl).
+5. Supabase Storage
+   - Stores raw file objects; returns a public URL (currently not time‑limited). Future: switch to signed URLs or private bucket + proxy-only access.
 
-    subgraph "File Storage"
-        E[Supabase Storage]
-    end
+### 4. Streaming Strategy
 
-    A -- "HTTPS" --> B
-    B -- "REST API" --> C
-    C -- "Prisma Client" --> D
-    C -- "Supabase SDK" --> E
+The `/media/:id/stream` endpoint retrieves DB metadata, then performs an HTTP request to the Supabase public file URL. If the client supplies a `Range` header, it is forwarded. Response headers like `Content-Range`, `Accept-Ranges`, and `Content-Type` are proxied back. Errors or timeouts fall back to a 302 redirect to the original public URL. This keeps internal logic simple while allowing future replacement with:
+
+- Private bucket + signed URL retrieval per request (expiring links)
+- On-the-fly transcoding (e.g., using ffmpeg workers)
+- Adaptive bitrate (HLS/DASH) generation offline
+
+### 5. Environment Variables (Backend)
+
+Required for current flow:
+
+```
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DB
+JWT_SECRET=change-me
+SUPABASE_URL=...        # e.g. https://xyzcompany.supabase.co
+SUPABASE_SERVICE_KEY=... # Service role key (server side only!)
+SUPABASE_BUCKET=media    # Existing bucket name
 ```
 
-### Data Flow:
+The service role key must never be exposed to the browser. Frontend does not require Supabase keys because it never talks directly to Supabase Storage.
 
-1.  The user interacts with the **Next.js** frontend in their browser.
-2.  The frontend sends API requests (e.g., for uploading or fetching media) to the **NestJS** backend.
-3.  The backend uses **Prisma** to communicate with the **PostgreSQL** database for metadata operations (e.g., saving file details).
-4.  For file uploads, the backend communicates with **Supabase Storage** to store the actual media files.
+### 6. Security Considerations
 
-## 2. Technology Stack
+- Current design uses public object URLs; anyone with the URL can access the file. Hardening step: switch bucket to private and generate signed URLs (short expiry) or serve strictly via backend proxy.
+- Large uploads block the API thread briefly; consider direct upload (signed POST policy) to storage for >50MB.
+- JWT: using symmetric secret; rotate regularly and consider refresh tokens if session longevity needed.
 
-The choice of technologies is based on modern development practices, scalability, and developer experience.
+### 7. Future Scope
 
-- **Monorepo:** The project is structured as a monorepo using `pnpm` workspaces. This approach centralizes dependency management and simplifies code sharing between the frontend and backend (e.g., via the `packages/contracts` library).
-
-- **Frontend:**
-
-  - **Next.js:** A React framework that enables server-side rendering and static site generation, providing excellent performance and SEO.
-  - **TypeScript:** Adds static typing to JavaScript, which helps in catching errors early and improving code quality.
-  - **Tailwind CSS & shadcn/ui:** Used for building a modern and responsive user interface efficiently.
-
-- **Backend:**
-
-  - **NestJS:** A Node.js framework that imposes a modular and organized structure, making the backend scalable and maintainable. It is built with TypeScript.
-  - **Prisma:** A next-generation ORM that provides a type-safe database client, simplifying database interactions and reducing runtime errors.
-
-- **Database:**
-
-  - **PostgreSQL:** A powerful and reliable open-source relational database, suitable for a wide range of applications. It is used here via Supabase.
-
-- **Infrastructure:**
-  - **Supabase:** Provides the PostgreSQL database and file storage, offering a convenient and scalable backend-as-a-service solution.
-
-## 3. Possible Improvements for Scaling
-
-As the system grows, the following improvements could be considered to handle increased load and complexity.
-
-- **Microservices Architecture:**
-
-  - The backend monolith could be broken down into smaller, independent microservices (e.g., an `auth-service`, a `media-processing-service`). This would allow individual services to be scaled independently.
-
-- **Asynchronous Processing:**
-
-  - For long-running tasks like video transcoding or thumbnail generation, a **message queue** (e.g., RabbitMQ, AWS SQS) could be introduced. This would offload work from the main API, improving its responsiveness.
-
-- **Caching:**
-
-  - Implement a caching layer using a service like **Redis**. This can be used to cache frequent database queries or API responses, significantly reducing database load and improving response times.
-
-- **Content Delivery Network (CDN):**
-
-  - Use a CDN (like Cloudflare or AWS CloudFront) to serve media files and static frontend assets from locations closer to the user. This would drastically reduce latency for users around the world.
-
-- **Database Scaling:**
-
-  - **Read Replicas:** Create read-only copies of the database to handle read-heavy workloads, distributing traffic and reducing the load on the primary database.
-  - **Database Sharding:** For extremely large-scale applications, the database could be sharded, partitioning data across multiple database servers.
-
-- **Containerization and Orchestration:**
-  - Use **Docker** to containerize the applications and **Kubernetes** to orchestrate them. This simplifies deployment, scaling, and management of the services in a cloud-agnostic way.
+| Area       | Current       | Future                                         |
+| ---------- | ------------- | ---------------------------------------------- |
+| Metadata   | Basic columns | EXIF extraction, duration, resolution analysis |
+| Processing | None          | Third party API (ffmpeg, image resize)         |

@@ -1,145 +1,84 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+## Backend (NestJS API)
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Project-specific backend documentation. For overall project overview see root `README.md`.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+### Stack
 
-## Description
+- NestJS 11 (modular: Auth, Media, Prisma, SDK)
+- Prisma ORM (local PostgreSQL)
+- (Future) object storage service for binary media
+- JWT (passport-jwt) + Argon2 hashing
+  (Thumbnail generation currently not implemented; `thumbnailUrl` reserved.)
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+### Run & Dev
 
-## Project setup
-
-```bash
-$ pnpm install
+```
+pnpm install
+pnpm prisma migrate dev --name init
+pnpm prisma generate
+pnpm start:dev
 ```
 
-## Compile and run the project
+Prod build:
 
-```bash
-# development
-$ pnpm run start
-
-# watch mode
-$ pnpm run start:dev
-
-# production mode
-$ pnpm run start:prod
+```
+pnpm build
+pnpm start:prod
 ```
 
-## Run tests
+### Env (.env.example)
 
-```bash
-# unit tests
-$ pnpm run test
-
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+```
+DATABASE_URL=postgresql://...
+JWT_SECRET=dev-secret
 ```
 
-## Deployment
+### Core Endpoints
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+| Method | Path           | Notes                                        |
+| ------ | -------------- | -------------------------------------------- |
+| POST   | /auth/register | Body: { email, password } -> { accessToken } |
+| POST   | /auth/login    | Body: { email, password } -> { accessToken } |
+| GET    | /auth/me       | Requires Bearer token                        |
+| POST   | /media         | Multipart: title, description?, file (≤50MB) |
+| GET    | /media         | List user files                              |
+| GET    | /media/:id     | Single item metadata                         |
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### Upload Lifecycle
 
-```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
+1. Validate size & MIME
+2. Persist file binary to storage service (current placeholder implementation)
+3. Persist file row
+4. Return contract (shared type from `@media/contracts`)
+
+### Data Shape (MediaItem)
+
 ```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
-
----
-
-## Project APIs (Custom)
-
-### Media Endpoints
-
-Base path: `/media`
-
-| Method | Path                | Description                                                                                  |
-| ------ | ------------------- | -------------------------------------------------------------------------------------------- |
-| POST   | `/media`            | Upload image or video (multipart: fields `title`, `description?`, `file`). Max 50MB.         |
-| GET    | `/media`            | List all media (newest first).                                                               |
-| GET    | `/media/:id`        | Fetch metadata for a single media item.                                                      |
-| GET    | `/media/:id/stream` | Stream the raw media bytes with HTTP Range support (use for `<video>` progressive playback). |
-
-### Streaming Usage
-
-For videos, prefer using the streaming endpoint so the browser can request partial ranges:
-
-```html
-<video src="http://localhost:3001/media/<id>/stream" controls></video>
-```
-
-If a `Range` header is supplied by the browser, it is forwarded to object storage (Supabase) and partial content (206) is returned when supported.
-
-### Response Shape (List / Detail / Upload)
-
-```json
 {
-  "id": "uuid",
-  "title": "string",
-  "description": "string?",
-  "url": "https://public.cdn/...",
-  "type": "image" | "video",
-  "mimeType": "image/png",
-  "size": 123456,
-  "uploadedAt": "2025-10-08T09:15:00.000Z",
-  "thumbnailUrl": "https://.../thumb.png" // nullable
+  id, title, description?, url, type, mimeType?, size?, uploadedAt, thumbnailUrl?
 }
 ```
 
-### Notes
+### Thumbnails
 
-- Public `url` field remains for direct loading (images, fallback). For controlled video playback or large file efficiency, use `/media/:id/stream`.
-- Currently thumbnails are not generated; `thumbnailUrl` is reserved for future processing pipeline.
-- Validation limits mime types to `image/*` or `video/*` and a maximum size of 50MB.
+`thumbnailUrl` is currently always null; future work may add background generation.
+
+### Useful Commands
+
+```
+pnpm prisma studio    # inspect DB
+pnpm prisma migrate dev --name add_field
+pnpm test             # unit
+pnpm test:e2e         # e2e
+```
+
+### Future Enhancements
+
+- Range-based streaming endpoint
+- Video poster extraction (ffmpeg)
+- Background jobs (thumbnails, transcoding)
+- Rich technical metadata capture
+
+---
+
+Refer to root documentation for architecture diagrams & roadmap.

@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## Frontend (Next.js)
 
-## Getting Started
+Provides the user interface for authentication, uploading, and browsing media.
 
-First, run the development server:
+### Stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Next.js (App Router)
+- React 19
+- TypeScript
+- Tailwind CSS + shadcn/ui + Radix primitives
+- Axios for API calls
+
+### Dev Commands
+
+```
+pnpm install           # (root) installs all workspaces
+pnpm dev               # (from root) runs both backend + frontend concurrently
+pnpm --filter frontend dev   # run frontend only
+pnpm build && pnpm start     # production build & serve
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Environment
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+`.env.example`:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+NEXT_PUBLIC_API_BASE=http://localhost:3001
+```
 
-## Learn More
+If omitted the code may fallback to relative API paths (depending on implementation in `lib/api.ts`).
 
-To learn more about Next.js, take a look at the following resources:
+### Auth Flow
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. User registers or logs in -> receives `accessToken` (JWT)
+2. Token stored client-side (context/hook) and attached as `Authorization: Bearer <token>` on requests
+3. Expired tokens yield 401 -> UI can redirect to login
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Core Components
 
-## Deploy on Vercel
+- `UploadForm` – multipart upload handling
+- `MediaGrid` – displays user media items
+- `AuthContext` – simple provider for token + user state
+- `useMedia` – custom hook encapsulating fetch logic
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Adding New API Calls
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Extend `lib/api.ts` with helper functions that automatically include the Bearer token from context.
+
+### Styling
+
+- Tailwind utility classes for layout
+- shadcn/ui for consistent, accessible primitives (buttons, dialogs)
+
+### Future Enhancements
+
+- Client-side caching layer (SWR / React Query)
+- Drag & drop uploads with progress indication
+- Infinite scrolling / virtualized grid
+- Inline video playback & poster frames
+
+### Testing (Planned)
+
+Recommended: React Testing Library + Playwright for end-to-end coverage.
+
+Refer to root `README.md` for global setup & architecture.
