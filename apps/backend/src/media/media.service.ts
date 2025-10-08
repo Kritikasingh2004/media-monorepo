@@ -18,6 +18,7 @@ export class MediaService {
   async upload(
     file: Express.Multer.File,
     dto: CreateMediaDto,
+    userId: string,
   ): Promise<MediaItem> {
     if (!file) throw new BadRequestException('File is required');
 
@@ -40,20 +41,22 @@ export class MediaService {
         type: file?.mimetype?.startsWith('video') ? 'video' : 'image',
         mimeType: file?.mimetype,
         size: file?.size,
+        userId,
       },
     });
     return this.toContract(created);
   }
 
-  async list(): Promise<MediaItem[]> {
+  async list(userId: string): Promise<MediaItem[]> {
     const rows = await this.prisma.file.findMany({
+      where: { userId },
       orderBy: { uploadedAt: 'desc' },
     });
     return rows.map((r): MediaItem => this.toContract(r));
   }
 
-  async findOne(id: string): Promise<MediaItem> {
-    const media = await this.prisma.file.findUnique({ where: { id } });
+  async findOne(id: string, userId: string): Promise<MediaItem> {
+    const media = await this.prisma.file.findFirst({ where: { id, userId } });
     if (!media) throw new NotFoundException('Media not found');
     return this.toContract(media);
   }
@@ -62,8 +65,8 @@ export class MediaService {
    * Internal helper used by streaming endpoint to obtain the raw DB row
    * (including original url/mime/size) without transforming to contract.
    */
-  async getFileRow(id: string) {
-    const media = await this.prisma.file.findUnique({ where: { id } });
+  async getFileRow(id: string, userId: string) {
+    const media = await this.prisma.file.findFirst({ where: { id, userId } });
     if (!media) throw new NotFoundException('Media not found');
     return media;
   }

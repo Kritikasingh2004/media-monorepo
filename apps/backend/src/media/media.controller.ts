@@ -10,12 +10,17 @@ import {
   Res,
   Req,
   Header,
-  HttpStatus,
 } from '@nestjs/common';
 import type { Response, Request } from 'express';
-import { Readable } from 'stream';
+// (No direct stream manipulation needed after refactor)
+import * as https from 'https';
+import * as http from 'http';
+import { URL } from 'url';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { MediaService } from './media.service';
+import { UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/jwt.guard';
+import { GetUser } from '../auth/get-user.decorator';
 import { CreateMediaDto } from './dto/create-media.dto';
 import type { Express } from 'express';
 import { MediaItem } from '@media/contracts';
@@ -27,6 +32,7 @@ export class MediaController {
   constructor(private readonly mediaService: MediaService) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileInterceptor('file', {
       limits: { fileSize: MAX_FILE_SIZE_BYTES },
@@ -46,18 +52,24 @@ export class MediaController {
   async upload(
     @UploadedFile() file: Express.Multer.File,
     @Body() body: CreateMediaDto,
+    @GetUser() user: { userId: string },
   ): Promise<MediaItem> {
-    return this.mediaService.upload(file, body);
+    return this.mediaService.upload(file, body, user.userId);
   }
 
   @Get()
-  async list(): Promise<MediaItem[]> {
-    return this.mediaService.list();
+  @UseGuards(JwtAuthGuard)
+  async list(@GetUser() user: { userId: string }): Promise<MediaItem[]> {
+    return this.mediaService.list(user.userId);
   }
 
   @Get(':id')
-  async detail(@Param('id') id: string): Promise<MediaItem> {
-    return this.mediaService.findOne(id);
+  @UseGuards(JwtAuthGuard)
+  async detail(
+    @Param('id') id: string,
+    @GetUser() user: { userId: string },
+  ): Promise<MediaItem> {
+    return this.mediaService.findOne(id, user.userId);
   }
 
   /**
@@ -68,13 +80,15 @@ export class MediaController {
    * still send the full file.
    */
   @Get(':id/stream')
+  @UseGuards(JwtAuthGuard)
   @Header('Accept-Ranges', 'bytes')
   async stream(
     @Param('id') id: string,
     @Req() req: Request,
     @Res() res: Response,
+    @GetUser() user: { userId: string },
   ) {
-    const row = await this.mediaService.getFileRow(id);
+    const row = await this.mediaService.getFileRow(id, user.userId);
     // Basic content type fallback
     const contentType = row.mimeType || 'application/octet-stream';
     const range = req.headers['range'];
@@ -83,69 +97,59 @@ export class MediaController {
       headers['Range'] = range;
     }
 
-    const upstream = await fetch(row.url, { headers });
-
-    // If upstream not OK (and not partial content), return an error response.
-    if (!upstream.ok && upstream.status !== 206) {
-      const text = await upstream.text().catch(() => 'Upstream fetch failed');
-      return res.status(HttpStatus.BAD_GATEWAY).json({
-        message: 'Failed to retrieve media',
-        upstreamStatus: upstream.status,
-        detail: text.slice(0, 500),
-      });
-    }
-
-    const isPartial = upstream.status === 206;
-    res.status(isPartial ? HttpStatus.PARTIAL_CONTENT : HttpStatus.OK);
-
-    const copyHeaders = [
-      'content-type',
-      'content-length',
-      'content-range',
-      'accept-ranges',
-      'cache-control',
-      'last-modified',
-      'etag',
-    ];
-    // Prefer origin content-type if available
-    const upstreamContentType = upstream.headers.get('content-type');
-    res.setHeader('Content-Type', upstreamContentType || contentType);
-    for (const h of copyHeaders) {
-      if (h === 'content-type') continue;
-      const v = upstream.headers.get(h);
-      if (v) res.setHeader(h, v);
-    }
-
-    const body = upstream.body; // ReadableStream<Uint8Array> | null
-    if (!body) return res.end();
-    try {
-      // Prefer streaming without buffering when possible
-      type FromWebCapable = {
-        fromWeb?: (rs: ReadableStream) => NodeJS.ReadableStream;
-      };
-      const rdl = Readable as unknown as FromWebCapable;
-      if (typeof rdl.fromWeb === 'function') {
-        const nodeStream = rdl.fromWeb(body as ReadableStream);
-        nodeStream.on('error', () => {
-          if (!res.headersSent) res.status(HttpStatus.INTERNAL_SERVER_ERROR);
+    const target = new URL(row.url);
+    const client = target.protocol === 'https:' ? https : http;
+    const reqHeaders: Record<string, string> = {};
+    if (headers['Range']) reqHeaders['Range'] = headers['Range'];
+    reqHeaders['Accept'] = '*/*';
+    const upstreamReq = client.request(
+      {
+        protocol: target.protocol,
+        hostname: target.hostname,
+        port: target.port,
+        method: 'GET',
+        path: target.pathname + target.search,
+        headers: reqHeaders,
+      },
+      (upstreamRes) => {
+        const statusCode = upstreamRes.statusCode || 500;
+        if (statusCode >= 400 && statusCode !== 206 && statusCode !== 200) {
+          // Redirect fallback on upstream error
+          if (!res.headersSent) return res.redirect(302, row.url);
+        }
+        // Forward headers
+        const forwardHeaders = [
+          'content-type',
+          'content-length',
+          'content-range',
+          'accept-ranges',
+          'cache-control',
+          'last-modified',
+          'etag',
+        ];
+        const ct = upstreamRes.headers['content-type'];
+        res.status(statusCode === 206 ? 206 : 200);
+        res.setHeader('Content-Type', ct || contentType);
+        for (const h of forwardHeaders) {
+          if (h === 'content-type') continue;
+          const val = upstreamRes.headers[h];
+          if (typeof val === 'string') res.setHeader(h, val);
+          else if (Array.isArray(val)) res.setHeader(h, val);
+        }
+        upstreamRes.on('error', () => {
+          if (!res.headersSent) res.status(500);
           res.end();
         });
-        return nodeStream.pipe(res);
-      }
-      // Fallback: buffer (not ideal for very large files)
-      const reader = (body as ReadableStream<Uint8Array>).getReader();
-      const chunks: Uint8Array[] = [];
-      while (true) {
-        const result = await reader.read();
-        if (result.done) break;
-        if (result.value) chunks.push(result.value);
-      }
-      const total = Buffer.concat(chunks.map((u) => Buffer.from(u)));
-      res.setHeader('Content-Length', total.length.toString());
-      res.end(total);
-    } catch {
-      if (!res.headersSent) res.status(HttpStatus.INTERNAL_SERVER_ERROR);
-      res.end();
-    }
+        upstreamRes.pipe(res);
+      },
+    );
+    upstreamReq.setTimeout(8000, () => {
+      upstreamReq.destroy(new Error('Upstream timeout'));
+      if (!res.headersSent) res.redirect(302, row.url);
+    });
+    upstreamReq.on('error', () => {
+      if (!res.headersSent) res.redirect(302, row.url);
+    });
+    upstreamReq.end();
   }
 }
